@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="GB18030"?>
+<web-app version="3.0"
+         xmlns="http://java.sun.com/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+    http://java.sun.com/xml/ns/javaee/web-app_3_0.xsd">
+    <servlet>
+        <servlet-name>CutomerCreateServlet</servlet-name>
+        <servlet-class>com.yang.chapter2.controller.CutomerCreateServlet</servlet-class>
+    </servlet>
+</web-app>
