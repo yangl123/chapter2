@@ -1,11 +1,13 @@
 package com.yang.chapter2.test;
 
+import com.yang.chapter2.helper.DatabaseHelper;
 import com.yang.chapter2.model.Customer;
 import com.yang.chapter2.service.CustomerService;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+import java.io.*;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +21,8 @@ public class CustomerServiceTest {
     @Before
     public void init(){
         //初始化数据库
+        String file="sql/customer_init.sql";
+        DatabaseHelper.executeSqlFile(file);
     }
     @Test
     public void getCustomerListTest() throws Exception{

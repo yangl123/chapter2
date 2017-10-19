@@ -1,7 +1,9 @@
 package com.yang.chapter2.helper;
 
+import com.mchange.v2.c3p0.DriverManagerDataSource;
 import com.yang.chapter2.util.PropsUtil;
 import com.yang.chapter2.util.StringUtil;
+
 import org.apache.commons.dbutils.QueryRunner;
 import org.apache.commons.dbutils.handlers.BeanHandler;
 import org.apache.commons.dbutils.handlers.BeanListHandler;
@@ -9,6 +11,10 @@ import org.apache.commons.dbutils.handlers.MapListHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -22,24 +28,41 @@ import java.util.Properties;
  */
 public class DatabaseHelper {
     private static final Logger loger= LoggerFactory.getLogger(DatabaseHelper.class);
-    private static final QueryRunner QUERY_RUNER=new QueryRunner();
-    private static final ThreadLocal<Connection> CONNECTION_THREAD_LOCAL=new ThreadLocal<Connection>();
-    private static final String DRIVER;
-    private static final String URL;
-    private static final String USER;
-    private static final String PASSWORD;
+    private static final QueryRunner QUERY_RUNER;
+    private static final ThreadLocal<Connection> CONNECTION_THREAD_LOCAL;
+    private static DriverManagerDataSource DATA_SOURCE = new DriverManagerDataSource();
+
     static {
+        QUERY_RUNER=new QueryRunner();
+        CONNECTION_THREAD_LOCAL=new ThreadLocal<Connection>();
+
+
         Properties properties= PropsUtil.loadProps("config.properties");
-        DRIVER=properties.getProperty("jdbc.driver");
-        URL=properties.getProperty("jdbc.url");
-        USER=properties.getProperty("jdbc.username");
-        PASSWORD=properties.getProperty("jdbc.password");
+        String driver=properties.getProperty("jdbc.driver");
+        String url=properties.getProperty("jdbc.url");
+        String username=properties.getProperty("jdbc.username");
+        String password=properties.getProperty("jdbc.password");
+        DATA_SOURCE.setDriverClass(driver);
+        DATA_SOURCE.setJdbcUrl(url);
+        DATA_SOURCE.setUser(username);
+        DATA_SOURCE.setPassword(password);
+    }
+    /**
+     * 执行sql文件
+     */
+    public static void executeSqlFile(String file){
+        InputStream inputStream=Thread.currentThread().getContextClassLoader().getResourceAsStream(file);
+        BufferedReader bufferedReader=new BufferedReader(new InputStreamReader(inputStream));
+        String sql;
         try {
-            Class.forName(DRIVER);
-        } catch (ClassNotFoundException e) {
-            loger.error("faild to load jdbc driver",e);
+            while ((sql=bufferedReader.readLine())!=null){
+                DatabaseHelper.executeUpdate(sql);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
+
     /**
      * 获取数据库连接
      */
@@ -48,7 +71,7 @@ public class DatabaseHelper {
         Connection connection=CONNECTION_THREAD_LOCAL.get();
         if(connection==null){
         try {
-            connection= DriverManager.getConnection(URL,USER,PASSWORD);
+            connection= DATA_SOURCE.getConnection();
         } catch (SQLException e) {
             loger.error("faild to create connection",e);
             throw new RuntimeException();
@@ -60,22 +83,6 @@ public class DatabaseHelper {
     }
 
 
-/**
- * 关闭数据库连接
- */
-public static void closeConnection(){
-    Connection connection=CONNECTION_THREAD_LOCAL.get();
-    if(connection!=null){
-        try {
-            connection.close();
-        } catch (SQLException e) {
-            loger.error("faild to close connection",e);
-            throw new RuntimeException();
-        }finally {
-            CONNECTION_THREAD_LOCAL.remove();
-        }
-    }
-}
 
 /**
  * 查询实体列表
@@ -88,8 +95,6 @@ public static <T> List<T> queryEntityList(Class<T> entityClass,String sql,Object
         entityList=QUERY_RUNER.query(connection,sql,new BeanListHandler<T>(entityClass),params);
     } catch (SQLException e) {
         e.printStackTrace();
-    }finally {
-        closeConnection();
     }
     return entityList;
 
@@ -106,8 +111,6 @@ public static <T> T queryEntity(Class<T> entityClass,String sql,Object params){
     } catch (SQLException e) {
       loger.error("execute sql query failture",e);
       throw new RuntimeException();
-    }finally {
-        closeConnection();
     }
     return entity;
 }
@@ -124,8 +127,6 @@ public static <T> T queryEntity(Class<T> entityClass,String sql,Object params){
             entityList=QUERY_RUNER.query(connection,sql,new MapListHandler(),params);
         } catch (SQLException e) {
             e.printStackTrace();
-        }finally {
-            closeConnection();
         }
         return entityList;
 
@@ -143,8 +144,6 @@ public static <T> T queryEntity(Class<T> entityClass,String sql,Object params){
             rows=QUERY_RUNER.update(connection,sql,params);
         } catch (SQLException e) {
             e.printStackTrace();
-        }finally {
-            closeConnection();
         }
         return rows;
 
